@@ -1,5 +1,3 @@
-#!/bin/bash
-
 // MongoDB script to list databases and their sizes
 
-show dbs
+show dbs;
