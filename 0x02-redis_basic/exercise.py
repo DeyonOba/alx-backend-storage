@@ -23,6 +23,5 @@ class Cache:
 
     def store(self, data: Union[str, bytes, int, float]) -> str:
         rand_key = str(uuid.uuid4())
-        self._redis.set(rand_key.encode('utf-8'), data)
-        self.flushdb
+        self._redis.set(rand_key, data)
         return rand_key
