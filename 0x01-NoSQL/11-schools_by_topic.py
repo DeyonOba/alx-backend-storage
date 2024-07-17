@@ -12,11 +12,4 @@ def schools_by_topic(mongo_collection, topic):
     """
     Gets the schools having a specific topic.
     """
-    schools = mongo_collection.find()
-    result = dict()
-
-    for school in schools:
-        if topic in school.get("topics", ""):
-            result.update(school)
-
-    return result
+    return list(mongo_collection.find({"topics": topic}))
