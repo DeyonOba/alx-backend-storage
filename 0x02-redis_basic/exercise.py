@@ -11,17 +11,42 @@ input data in Redis using the random key and return the key.
 import uuid
 import redis
 from typing import Union, Optional, Callable
+from functools import wraps
+
+
+def count_calls(method: Callable) -> Callable:
+    """
+    Decorator counts the number of time a method is called.
+    """
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        """
+        Wrapper count the number of time a method is called
+        """
+        self._redis.incr(method.__qualname__)
+        return method(self, *args, **kwargs)
+
+    return wrapper
 
 
 class Cache:
     """
     Class that write string to Redis.
     """
-    def __init__(self):
+    def __init__(self) -> None:
         self._redis = redis.Redis()
         self.flushdb = redis.Redis().flushdb()
 
+    @count_calls
     def store(self, data: Union[str, bytes, int, float]) -> str:
+        """Stores data in Redis db.
+
+        Args:
+            data (Union[str, bytes, int, float]): Accepted data.
+
+        Returns:
+            str: The key value of the data in a uuid4 format.
+        """
         rand_key = str(uuid.uuid4())
         self._redis.set(rand_key, data)
         return rand_key
@@ -29,6 +54,16 @@ class Cache:
     def get(
         self, key: str, fn: Optional[Callable] = None
     ) -> Union[str, bytes, int, float, None]:
+        """
+        Gets the value of data stored using the key and
+        converts it to the proper type.
+
+        Args:
+            key (str): _description_
+            fn (Optional[Callable], optional: Takes a callable function
+        Returns:
+            Union[str, bytes, int, float, None]: Accepted return types
+        """
         data = self._redis.get(key)
         if data is None:
             return None
@@ -37,7 +72,25 @@ class Cache:
         return data
 
     def get_str(self, key: str) -> Optional[str]:
+        """
+        Assigns the proper function for retrieving a string.
+
+        Args:
+            key (str): Key value
+
+        Returns:
+            Optional[str]: String value
+        """
         return self.get(key, fn=lambda d: d.decode('utf-8'))
 
     def get_int(self, key: str) -> Optional[int]:
+        """
+        Assigns the proper function for retrieving an integer.
+
+        Args:
+            key (str): Key value
+
+        Returns:
+            Optional[int]: Integer value
+        """
         return self.get(key, fn=int)
