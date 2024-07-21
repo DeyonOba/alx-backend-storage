@@ -15,70 +15,72 @@ from typing import Callable, Union
 from functools import wraps
 
 
-def count_calls(method: Callable) -> Callable:
-    """Decorator function that takes in a method and
-    return the wrapper function.
+client = redis.Redis()
+
+
+def get_content(method: Callable) -> Callable:
+    """Gets or Saves the content of the URL link.
+    Args:
+        method (Callable): Callable method
+
+    Returns:
+        Callable: content.
     """
     @wraps(method)
-    def wrapper(self, *args, **kwargs):
-        """Update number of time a URL has been accessed."""
-        self._client.incr("count:{}".format(args[0]))
-        return method(self, *args, **kwargs)
+    def wrapper(*args):
+        """Function wrapper
+        """
+        # check if content is cached
+        cached = client.get(args[0])
+
+        if cached:
+            return cached.decode("utf-8")
+
+        content = method(*args)
+        client.setex(url, 10, content)
+        return content
     return wrapper
 
 
-class Cache:
+def count_url_calls(method: Callable) -> Callable:
+    """Counts the number of time a URL link has been accessed.
+
+    Args:
+        method (Callable): Callable method
+
+    Returns:
+        Callable: wrapper function
     """
-    Cache the content of a URL and keep track of it.
+    @wraps(method)
+    def wrapper(*args):
+        """Function wrapper.
+        """
+        print(args)
+        client.incr("count:" + args[0])
+        return method(*args)
+    return wrapper
+
+
+@get_content
+@count_url_calls
+def get_page(url: str) -> str:
+    """Gets page content and updates
+    the database with URL content and function url call count.
+
+    Args:
+        url (str): web link.
+
+    Returns:
+        str: page text content.
     """
-
-    def __init__(self) -> None:
-        self._client: redis.Redis = redis.Redis()
-
-    @count_calls
-    def save(self, url: str) -> str:
-        """Saves content from a URL link.
-
-        Args:
-            url (str): Link to be accessed and saved
-
-        Returns:
-            str: URL
-        """
-        content = self.get_content(url)
-
-        if content:
-            self._client.setex(url, 10, content)
-        return url
-
-    def get_content(self, url: str) -> Union[bytes, None]:
-        """Gets the content of URL link.
-
-        Args:
-            url (str): Link to be accessed
-
-        Returns:
-            Union[bytes, None]: content of page or None
-        """
-        try:
-            r = requests.get(url)
-
-            if r.status_code != 200:
-                return None
-            return r.content
-        except Exception as e:
-            # print(e.__class__, e)
-            return None
+    r = requests.get(url)
+    return r.text
 
 
 if __name__ == "__main__":
-    cache = Cache()
 
     # url = "http://slowwly.robertomurray.co.uk"
-    url = "https://stackoverflow.com/questions/\
-        12802726/how-to-list-all-redis-databases"
-
-    cache.save(url)
-    result = cache._client.get(url)
-    print(cache._client.get("count:{}".format(url)))
-    print(result)
+    url = "https://www.google.com/"
+    print(client.get("count:"+url))
+    print(get_page(url))
+    print(client.get("count:"+url))
