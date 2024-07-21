@@ -30,14 +30,14 @@ def get_content(method: Callable) -> Callable:
     def wrapper(*args):
         """Function wrapper
         """
-        # check if content is cached
-        cached = client.get(args[0])
+        # check if content is already cached
+        cached = client.get("cached:".format(args[0]))
 
         if cached:
             return cached.decode("utf-8")
 
         content = method(*args)
-        client.setex(url, 10, content)
+        client.setex("cached:{}".format(args[0]), 10, content)
         return content
     return wrapper
 
@@ -55,7 +55,6 @@ def count_url_calls(method: Callable) -> Callable:
     def wrapper(*args):
         """Function wrapper.
         """
-        print(args)
         client.incr("count:" + args[0])
         return method(*args)
     return wrapper
