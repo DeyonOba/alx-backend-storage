@@ -115,3 +115,28 @@ class Cache:
             Optional[int]: Integer value
         """
         return self.get(key, fn=int)
+
+
+def replay(method: Cache.store) -> None:
+    """
+    Display the number of method calls of Cache.store method,
+    displays the arguments and output history of the store call.
+
+    Cache.store is a bond method, therefore we can still refer to the
+    instance of which it is bound to use this:
+    >>> Cache.store.__self__
+    """
+    object = method.__self__
+    qualname = method.__qualname__
+    number_of_store_calls = int(object._redis.get(method.__qualname__))
+    _inputs = object._redis.lrange(
+        "{}:inputs".format(method.__qualname__), 0, -1)
+    _outputs = object._redis.lrange(
+        "{}:outputs".format(method.__qualname__), 0, -1)
+
+    _inputs = list(map(lambda x: eval(x.decode("utf-8")), _inputs))
+    _outputs = list(map(lambda x: x.decode("utf-8"), _outputs))
+
+    print("{} was called {} times:".format(qualname, number_of_store_calls))
+    for _input, _output in zip(_inputs, _outputs):
+        print("{}(*{}) -> {}".format(qualname, _input, _output))
